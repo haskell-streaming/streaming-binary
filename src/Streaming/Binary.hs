@@ -17,7 +17,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Streaming.Binary (decode, decoded) where
+module Streaming.Binary (decode, decodeWith, decoded, decodedWith) where
 
 import qualified Data.Binary.Get as Binary
 import Data.Binary (Binary(..))
@@ -31,7 +31,14 @@ decode
   :: (Binary a, Monad m)
   => ByteString m r
   -> m (ByteString m r, Int64, Either String a)
-decode = go 0 (Binary.runGetIncremental get)
+decode = decodeWith get
+
+decodeWith
+  :: Monad m
+  => Binary.Get a
+  -> ByteString m r
+  -> m (ByteString m r, Int64, Either String a)
+decodeWith getter = go 0 (Binary.runGetIncremental getter)
   where
     go !total (Binary.Fail leftover nconsumed err) p = do
         return (Q.chunk leftover >> p, total + nconsumed, Left err)
@@ -42,13 +49,21 @@ decode = go 0 (Binary.runGetIncremental get)
         Left res -> go total (k Nothing) (return res)
         Right (bs, p') -> go total (k (Just bs)) p'
 
+
 decoded
   :: (Binary a, Monad m)
   => ByteString m r
   -> Stream (Of a) m (ByteString m r, Int64, Either String r)
-decoded = go 0 decoder0
+decoded = decodedWith get
+
+decodedWith
+  :: Monad m
+  => Binary.Get a
+  -> ByteString m r
+  -> Stream (Of a) m (ByteString m r, Int64, Either String r)
+decodedWith getter = go 0 decoder0
   where
-    decoder0 = Binary.runGetIncremental get
+    decoder0 = Binary.runGetIncremental getter
     go !total (Binary.Fail leftover nconsumed err) p = do
         return (Q.chunk leftover >> p, total + nconsumed, Left err)
     go !total (Binary.Done "" nconsumed x) p = do
