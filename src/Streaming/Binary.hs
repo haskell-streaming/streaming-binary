@@ -17,21 +17,30 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Streaming.Binary (decoded) where
+module Streaming.Binary (decode, decoded) where
 
 import qualified Data.Binary.Get as Binary
-import Data.Binary (Binary, get)
+import Data.Binary (Binary(..))
 import qualified Data.ByteString.Streaming as Q
 import Data.ByteString.Streaming (ByteString)
 import Data.Int (Int64)
 import Streaming
 import qualified Streaming.Prelude as S
 
-_decode
+decode
   :: (Binary a, Monad m)
   => ByteString m r
   -> m (ByteString m r, Int64, Either String a)
-_decode = undefined -- TODO implement this.
+decode = go 0 (Binary.runGetIncremental get)
+  where
+    go !total (Binary.Fail leftover nconsumed err) p = do
+        return (Q.chunk leftover >> p, total + nconsumed, Left err)
+    go !total (Binary.Done leftover nconsumed x) p = do
+        return (Q.chunk leftover >> p, total + nconsumed, Right x)
+    go !total (Binary.Partial k) p = do
+      Q.nextChunk p >>= \case
+        Left res -> go total (k Nothing) (return res)
+        Right (bs, p') -> go total (k (Just bs)) p'
 
 decoded
   :: (Binary a, Monad m)

@@ -15,6 +15,13 @@ spec :: Spec
 spec = do
     let input n = Q.fromLazy $ runPut $ replicateM_ n $ put (42 :: Int)
     describe "decoded" $ do
+      it "fails on empty inputs" $ do
+        (_, _, output) <- decode @Int (input 0)
+        output `shouldBe` Left "not enough bytes"
+      it "decodes single integers" $ do
+        (_, _, output) <- decode @Int (input 1)
+        output `shouldBe` Right 42
+    describe "decoded" $ do
       it "succeeds on empty inputs" $ do
         output <- void (decoded @Int (input 0)) & S.toList_
         output `shouldBe` []
