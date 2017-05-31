@@ -1,5 +1,5 @@
 name: streaming-binary
-version: 0.2.1.0
+version: 0.2.2.0
 synopsis: Streaming interface to binary.
 homepage: https://github.com/mboes/streaming-binary#readme
 license: BSD3
