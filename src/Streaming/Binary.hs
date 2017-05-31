@@ -74,7 +74,7 @@ decodedWith getter = go 0 decoder0
             go (total + nconsumed) decoder0 (Q.chunk bs >> p')
     go !total (Binary.Done leftover nconsumed x) p = do
         S.yield x
-        go (total + nconsumed) decoder0 (Q.chunk leftover >> p)
+        go (total + nconsumed) (decoder0 `Binary.pushChunk` leftover) p
     go !total (Binary.Partial k) p = do
       lift (Q.nextChunk p) >>= \case
         Left res -> go total (k Nothing) (return res)
