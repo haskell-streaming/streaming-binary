@@ -121,6 +121,7 @@ encodedWith
 encodedWith putter xs =
     hoist liftIO $
     Q.toStreamingByteStringWith strategy $
-    Q.concatBuilders (S.map (Binary.execPut . putter) xs)
+    Q.concatBuilders $
+    S.map (Binary.execPut . putter) xs
   where
     strategy = BS.untrimmedStrategy BS.smallChunkSize BS.defaultChunkSize
