@@ -17,10 +17,21 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Streaming.Binary (decode, decodeWith, decoded, decodedWith) where
+module Streaming.Binary
+  ( decode
+  , decodeWith
+  , decoded
+  , decodedWith
+  , encode
+  , encodeWith
+  , encoded
+  , encodedWith
+  ) where
 
 import qualified Data.Binary.Get as Binary
+import qualified Data.Binary.Put as Binary
 import Data.Binary (Binary(..))
+import qualified Data.ByteString.Builder.Extra as BS
 import qualified Data.ByteString.Streaming as Q
 import Data.ByteString.Streaming (ByteString)
 import Data.Int (Int64)
@@ -79,3 +90,37 @@ decodedWith getter = go 0 decoder0
       lift (Q.nextChunk p) >>= \case
         Left res -> go total (k Nothing) (return res)
         Right (bs, p') -> go total (k (Just bs)) p'
+
+encode
+  :: (Binary a, MonadIO m)
+  => a
+  -> ByteString m ()
+encode = encodeWith put
+
+encodeWith
+  :: MonadIO m
+  => (a -> Binary.Put)
+  -> a
+  -> ByteString m ()
+encodeWith putter x =
+    Q.toStreamingByteStringWith
+      (BS.untrimmedStrategy BS.smallChunkSize BS.defaultChunkSize)
+      (Binary.execPut (putter x))
+
+encoded
+  :: (Binary a, MonadIO m)
+  => Stream (Of a) IO ()
+  -> ByteString m ()
+encoded = encodedWith put
+
+encodedWith
+  :: MonadIO m
+  => (a -> Binary.Put)
+  -> Stream (Of a) IO ()
+  -> ByteString m ()
+encodedWith putter xs =
+    hoist liftIO $
+    Q.toStreamingByteStringWith strategy $
+    Q.concatBuilders (S.map (Binary.execPut . putter) xs)
+  where
+    strategy = BS.untrimmedStrategy BS.smallChunkSize BS.defaultChunkSize

@@ -14,7 +14,7 @@ import Test.Hspec
 spec :: Spec
 spec = do
     let input n = Q.fromLazy $ runPut $ replicateM_ n $ put (42 :: Int)
-    describe "decoded" $ do
+    describe "decode" $ do
       it "fails on empty inputs" $ do
         (_, _, output) <- decode @Int (input 0)
         output `shouldBe` Left "not enough bytes"
@@ -41,3 +41,10 @@ spec = do
         let input' = Q.take (fromIntegral (n - 1)) (input 10)
         (leftover, _, _) <- S.effects (decoded @Int input')
         Q.length_ leftover `shouldReturn` (n `div` 10) - 1
+    describe "laws" $ do
+      it "decode . encode = id for booleans" $ do
+        (_, _, output) <- decode (encode True)
+        output `shouldBe` Right True
+      it "decoded . encoded = id for booleans" $ do
+        xs <- S.replicate 10 True & encoded & decoded & void & S.toList_
+        xs `shouldBe` (replicate 10 True)
