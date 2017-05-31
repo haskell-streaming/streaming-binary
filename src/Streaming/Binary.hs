@@ -38,12 +38,16 @@ import Data.Int (Int64)
 import Streaming
 import qualified Streaming.Prelude as S
 
+-- | Decode a single element from a streaming bytestring. Returns any leftover
+-- input, the number of bytes consumed, and either an error string or the
+-- element if decoding succeeded.
 decode
   :: (Binary a, Monad m)
   => ByteString m r
   -> m (ByteString m r, Int64, Either String a)
 decode = decodeWith get
 
+-- | Like 'decode', but with an explicitly provided decoder.
 decodeWith
   :: Monad m
   => Binary.Get a
@@ -61,12 +65,16 @@ decodeWith getter = go 0 (Binary.runGetIncremental getter)
         Right (bs, p') -> go total (k (Just bs)) p'
 
 
+-- | Decode a sequence of elements from a streaming bytestring. Returns any
+-- leftover input, the number of bytes consumed, and either an error string or
+-- the return value if there were no errors. Decoding stops at the first error.
 decoded
   :: (Binary a, Monad m)
   => ByteString m r
   -> Stream (Of a) m (ByteString m r, Int64, Either String r)
 decoded = decodedWith get
 
+-- | Like 'decoded', but with an explicitly provided decoder.
 decodedWith
   :: Monad m
   => Binary.Get a
@@ -91,12 +99,14 @@ decodedWith getter = go 0 decoder0
         Left res -> go total (k Nothing) (return res)
         Right (bs, p') -> go total (k (Just bs)) p'
 
+-- | Encode a single element.
 encode
   :: (Binary a, MonadIO m)
   => a
   -> ByteString m ()
 encode = encodeWith put
 
+-- | Like 'encode', but with an explicitly provided encoder.
 encodeWith
   :: MonadIO m
   => (a -> Binary.Put)
@@ -107,12 +117,14 @@ encodeWith putter x =
       (BS.untrimmedStrategy BS.smallChunkSize BS.defaultChunkSize)
       (Binary.execPut (putter x))
 
+-- | Encode a stream of elements to a streaming bytestring.
 encoded
   :: (Binary a, MonadIO m)
   => Stream (Of a) IO ()
   -> ByteString m ()
 encoded = encodedWith put
 
+-- | Like 'encoded', but with an explicitly provided encoder.
 encodedWith
   :: MonadIO m
   => (a -> Binary.Put)
