@@ -20,8 +20,10 @@
 module Streaming.Binary
   ( decode
   , decodeWith
+  , decodeWithDecoder
   , decoded
   , decodedWith
+  , decodedWithDecoder
   , encode
   , encodeWith
   , encoded
@@ -53,7 +55,15 @@ decodeWith
   => Binary.Get a
   -> ByteString m r
   -> m (ByteString m r, Int64, Either String a)
-decodeWith getter = go 0 (Binary.runGetIncremental getter)
+decodeWith getter = decodeWithDecoder (Binary.runGetIncremental getter)
+
+-- | Like 'decode', but with an explicitly provided 'Decoder'.
+decodeWithDecoder
+  :: Monad m
+  => Binary.Decoder a
+  -> ByteString m r
+  -> m (ByteString m r, Int64, Either String a)
+decodeWithDecoder = go 0
   where
     go !total (Binary.Fail leftover nconsumed err) p = do
         return (Q.chunk leftover >> p, total + nconsumed, Left err)
@@ -80,9 +90,18 @@ decodedWith
   => Binary.Get a
   -> ByteString m r
   -> Stream (Of a) m (ByteString m r, Int64, Either String r)
-decodedWith getter = go 0 decoder0
+decodedWith getter = decodedWithDecoder decoder0
   where
     decoder0 = Binary.runGetIncremental getter
+
+-- | Like 'decoded', but with an explicitly provided 'Decoder'.
+decodedWithDecoder
+  :: Monad m
+  => Binary.Decoder a
+  -> ByteString m r
+  -> Stream (Of a) m (ByteString m r, Int64, Either String r)
+decodedWithDecoder decoder0 = go 0 decoder0
+  where
     go !total (Binary.Fail leftover nconsumed err) p = do
         return (Q.chunk leftover >> p, total + nconsumed, Left err)
     go !total (Binary.Done "" nconsumed x) p = do
